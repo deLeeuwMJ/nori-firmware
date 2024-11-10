@@ -71,17 +71,30 @@ void loop() {
         client->disconnect();
         break;
       }
-      Serial.println(" - Found our characteristic");
 
       // Read the value of the characteristic.
       if(pRemoteCharacteristic->canRead()) {
-        auto value = pRemoteCharacteristic->readValue();
-        Serial.print("The characteristic value was: ");
-        for (size_t i = 0; i < value.size(); i++) {
-          Serial.print(value[i], HEX);  // Print the value as hexadecimal
-          Serial.print(" ");
+        auto rawData = pRemoteCharacteristic->readValue();
+        
+        String hexString = "";  // String to accumulate the hex values
+
+        for (const auto& byte : rawData) {
+            hexString += String((uint8_t)byte, HEX);  // Convert byte to hex and append to hexString
+            hexString += " ";  // Add space between hex values
         }
-        Serial.println();
+
+        Serial.print("The value retrieved is: ");
+        Serial.println(hexString);
+
+        auto current_speed = hexString.toInt();
+
+        if (current_speed > 70) {
+          smd.setRedValue(LED_BRIGHTNESS);
+          delay(100);
+          buzzer.playTooHighSpeed();
+        } else {
+          smd.setRedValue(0);
+        }
       } else {
         Serial.println("Characteristic is not readable.");
       }
