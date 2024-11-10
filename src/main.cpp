@@ -8,18 +8,16 @@
 #include "buzzer.h"
 
 #define SCAN_TIME 10
-#define OBD2_ADDRESS "75:0E:4A:ED:E9:60"
+
+static BLEUUID serviceUUID("180D");
+static BLEUUID charUUID("2A38");
 
 auto smd = SMDPeripheral();
 auto buzzer = BuzzerPeripheral();
 
-int generateSpeedValue() {
-  return rand() % 105;
-}
-
 class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
-    Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
+    Serial.printf("Advertised Device: %s \n", advertisedDevice.getAddress().toString().c_str());
   }
 };
 
@@ -40,16 +38,6 @@ void setup() {
 }
 
 void loop() {
-  // auto current_speed = generateSpeedValue();
-  // Serial.printf("Current Speed: %s \n", current_speed);
-
-  // if (current_speed > 100) {
-  //   smd.setRedValue(LED_BRIGHTNESS);
-  //   delay(100);
-  //   buzzer.playTooHighSpeed();
-  // } else {
-  //   smd.setRedValue(0);
-  // }
   auto foundDevices = pBLEScan->start(SCAN_TIME, false);
   Serial.println("Scan done!");
 
@@ -59,12 +47,48 @@ void loop() {
     auto device = foundDevices.getDevice(i);
 
     if (device.getName() == "DEV-BLE-PRP"){
-      Serial.print("Device found!");
+      Serial.println("Device found!");
+
+      auto client = BLEDevice::createClient();
+
+      if (!client->connect(device.getAddress())) {
+        Serial.println("Failed to connect!");
+        break;
+      }
+
+      auto *pRemoteService = client->getService(serviceUUID);
+      if (pRemoteService == nullptr) {
+        Serial.println("Failed to retrieve using serviceUUID!");
+        client->disconnect();
+        break;
+      }
+
+      // Obtain a reference to the characteristic in the service of the remote BLE server.
+      auto pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+      if (pRemoteCharacteristic == nullptr) {
+        Serial.print("Failed to find our characteristic UUID: ");
+        Serial.println(charUUID.toString().c_str());
+        client->disconnect();
+        break;
+      }
+      Serial.println(" - Found our characteristic");
+
+      // Read the value of the characteristic.
+      if(pRemoteCharacteristic->canRead()) {
+        auto value = pRemoteCharacteristic->readValue();
+        Serial.print("The characteristic value was: ");
+        for (size_t i = 0; i < value.size(); i++) {
+          Serial.print(value[i], HEX);  // Print the value as hexadecimal
+          Serial.print(" ");
+        }
+        Serial.println();
+      } else {
+        Serial.println("Characteristic is not readable.");
+      }
     }
   }
 
-  pBLEScan->clearResults();  // delete results fromBLEScan buffer to release memory
-
+  pBLEScan->clearResults();  // delete results from BLEScan buffer to release memory
 
   delay(5000);
 }
