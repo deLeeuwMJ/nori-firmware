@@ -63,40 +63,44 @@ void loop() {
         break;
       }
 
-      // Obtain a reference to the characteristic in the service of the remote BLE server.
-      auto pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
-      if (pRemoteCharacteristic == nullptr) {
-        Serial.print("Failed to find our characteristic UUID: ");
-        Serial.println(charUUID.toString().c_str());
-        client->disconnect();
-        break;
-      }
-
-      // Read the value of the characteristic.
-      if(pRemoteCharacteristic->canRead()) {
-        auto rawData = pRemoteCharacteristic->readValue();
-        
-        String hexString = "";  // String to accumulate the hex values
-
-        for (const auto& byte : rawData) {
-            hexString += String((uint8_t)byte, HEX);  // Convert byte to hex and append to hexString
-            hexString += " ";  // Add space between hex values
+      auto isConnected = true;
+      while (isConnected) {
+        // Obtain a reference to the characteristic in the service of the remote BLE server.
+        auto pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+        if (pRemoteCharacteristic == nullptr) {
+          Serial.print("Failed to find our characteristic UUID: ");
+          Serial.println(charUUID.toString().c_str());
+          client->disconnect();
+          isConnected = false;
         }
 
-        Serial.print("The value retrieved is: ");
-        Serial.println(hexString);
+         // Read the value of the characteristic.
+        if(pRemoteCharacteristic->canRead()) {
+          auto rawData = pRemoteCharacteristic->readValue();
+          
+          String hexString = "";  // String to accumulate the hex values
 
-        auto current_speed = hexString.toInt();
+          for (const auto& byte : rawData) {
+              hexString += String((uint8_t)byte, HEX);  // Convert byte to hex and append to hexString
+              hexString += " ";  // Add space between hex values
+          }
 
-        if (current_speed > 70) {
-          smd.setRedValue(LED_BRIGHTNESS);
-          delay(100);
-          buzzer.playTooHighSpeed();
+          Serial.print("The value retrieved is: ");
+          Serial.println(hexString);
+
+          auto current_speed = hexString.toInt();
+
+          if (current_speed > 70) {
+            smd.setRedValue(LED_BRIGHTNESS);
+            delay(100);
+            buzzer.playTooHighSpeed();
+          } else {
+            smd.setRedValue(0);
+          }
         } else {
-          smd.setRedValue(0);
+          Serial.println("Characteristic is not readable.");
         }
-      } else {
-        Serial.println("Characteristic is not readable.");
+        delay(1000);
       }
     }
   }
