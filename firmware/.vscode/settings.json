@@ -22,6 +22,7 @@
     "istream": "cpp",
     "ostream": "cpp",
     "complex": "cpp",
-    "format": "cpp"
+    "format": "cpp",
+    "i2c.h": "c"
   }
 }
