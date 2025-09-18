@@ -1,3 +1,3 @@
-idf_component_register(SRCS "main.cpp"
+idf_component_register(SRCS "main.cpp" "display.cpp" "render.cpp"
                        PRIV_REQUIRES spi_flash
                        INCLUDE_DIRS "")
