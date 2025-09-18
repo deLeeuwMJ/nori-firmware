@@ -1,0 +1,11 @@
+{
+    "idf.espIdfPathWin": "C:\\Users\\jayso\\esp\\v5.5.1\\esp-idf",
+    "idf.toolsPathWin": "C:\\Users\\jayso\\.espressif",
+    "idf.pythonInstallPath": "C:\\Users\\jayso\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
+    "idf.flashType": "UART",
+    "idf.portWin": "COM5",
+    "idf.monitorPort": "COM5",
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ]
+}
