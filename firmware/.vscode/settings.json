@@ -17,5 +17,11 @@
     "--compile-commands-dir=${workspaceFolder}\\build"
   ],
   "idf.flashType": "UART",
-  "idf.monitorPort": "COM5"
+  "idf.monitorPort": "COM5",
+  "files.associations": {
+    "istream": "cpp",
+    "ostream": "cpp",
+    "complex": "cpp",
+    "format": "cpp"
+  }
 }
