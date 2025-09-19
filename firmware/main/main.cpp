@@ -23,6 +23,42 @@ static NimBLEAddress peripheralAddress= NimBLEAddress("3c:71:bf:fd:83:56", BLE_A
 static constexpr char* OBD2_SERVICE_UUID = "52d764ea-122d-4d01-8326-53e00a6ca36d";
 static constexpr char* SPEED_CHAR_UUID = "a1247688-4bf1-40ec-bd6a-91724982e094";
 
+class ClientCallbacks : public NimBLEClientCallbacks {
+    void onConnect(NimBLEClient* pClient) override { printf("Connected\n"); }
+
+    void onDisconnect(NimBLEClient* pClient, int reason) override {
+        printf("%s Disconnected, reason = %d - Starting scan\n", pClient->getPeerAddress().toString().c_str(), reason);
+        NimBLEDevice::getScan()->start(scanTimeMs, false, true);
+    }
+
+    /********************* Security handled here *********************/
+    void onPassKeyEntry(NimBLEConnInfo& connInfo) override {
+        printf("Server Passkey Entry\n");
+        /**
+         * This should prompt the user to enter the passkey displayed
+         * on the peer device.
+         */
+        NimBLEDevice::injectPassKey(connInfo, 123456);
+    }
+
+    void onConfirmPasskey(NimBLEConnInfo& connInfo, uint32_t pass_key) override {
+        printf("The passkey YES/NO number: %" PRIu32 "\n", pass_key);
+        /** Inject false if passkeys don't match. */
+        NimBLEDevice::injectConfirmPasskey(connInfo, true);
+    }
+
+    /** Pairing process complete, we can check the results in connInfo */
+    void onAuthenticationComplete(NimBLEConnInfo& connInfo) override {
+        if (!connInfo.isEncrypted()) {
+            printf("Encrypt connection failed - disconnecting\n");
+            /** Find the client with the connection handle provided in connInfo */
+            NimBLEDevice::getClientByHandle(connInfo.getConnHandle())->disconnect();
+            return;
+        }
+    }
+} clientCallbacks;
+
+
 class ScanCallbacks : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
         printf("Advertised Device found: %s\n", advertisedDevice->toString().c_str());
@@ -52,28 +88,28 @@ void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
 bool connectToServer() {
     NimBLEClient* pClient = nullptr;
 
-    // /** Check if we have a client we should reuse first **/
-    // if (NimBLEDevice::getCreatedClientCount()) {
-    //     /**
-    //      *  Special case when we already know this device, we send false as the
-    //      *  second argument in connect() to prevent refreshing the service database.
-    //      *  This saves considerable time and power.
-    //      */
-    //     pClient = NimBLEDevice::getClientByPeerAddress(advDevice->getAddress());
-    //     if (pClient) {
-    //         if (!pClient->connect(advDevice, false)) {
-    //             printf("Reconnect failed\n");
-    //             return false;
-    //         }
-    //         printf("Reconnected client\n");
-    //     } else {
-    //         /**
-    //          *  We don't already have a client that knows this device,
-    //          *  check for a client that is disconnected that we can use.
-    //          */
-    //         pClient = NimBLEDevice::getDisconnectedClient();
-    //     }
-    // }
+    /** Check if we have a client we should reuse first **/
+    if (NimBLEDevice::getCreatedClientCount()) {
+        /**
+         *  Special case when we already know this device, we send false as the
+         *  second argument in connect() to prevent refreshing the service database.
+         *  This saves considerable time and power.
+         */
+        pClient = NimBLEDevice::getClientByPeerAddress(advDevice->getAddress());
+        if (pClient) {
+            if (!pClient->connect(advDevice, false)) {
+                printf("Reconnect failed\n");
+                return false;
+            }
+            printf("Reconnected client\n");
+        } else {
+            /**
+             *  We don't already have a client that knows this device,
+             *  check for a client that is disconnected that we can use.
+             */
+            pClient = NimBLEDevice::getDisconnectedClient();
+        }
+    }
 
     /** No client to reuse? Create a new one. */
     if (!pClient) {
@@ -83,8 +119,7 @@ bool connectToServer() {
         }
 
         pClient = NimBLEDevice::createClient();
-        // pClient->setConnectionParams(12, 12, 0, 150);
-        // pClient->setConnectTimeout(5 * 1000);
+        pClient->setClientCallbacks(&clientCallbacks, false);
 
         if (!pClient->connect(advDevice)) {
             NimBLEDevice::deleteClient(pClient);
