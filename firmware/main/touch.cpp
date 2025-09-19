@@ -9,6 +9,8 @@
 static esp_lcd_touch_handle_t tp = NULL;
 static bool ISR_TOUCH_TRIGGERED = false;
 
+std::function<void(uint16_t, uint16_t)> Touch::onTouchCoordinates = nullptr;
+
 void Touch::touchCallback(esp_lcd_touch_handle_t tp)
 {
     ISR_TOUCH_TRIGGERED = true;
@@ -25,12 +27,10 @@ void Touch::processTouchEventTask(void *pvParameter)
             uint16_t touch_strength[1];
             uint8_t touch_cnt = 0;
 
-            bool touchpad_pressed = esp_lcd_touch_get_coordinates(tp, touch_x, touch_y, touch_strength, &touch_cnt, 1);
-
-            ESP_LOGI(TAG, "Polling, touch count: %d", touch_cnt);
+            esp_lcd_touch_get_coordinates(tp, touch_x, touch_y, touch_strength, &touch_cnt, 1);
 
             if (touch_cnt > 0) {
-                ESP_LOGI(TAG, "Touch at x=%d, y=%d", touch_x[0], touch_y[0]);
+                onTouchCoordinates(touch_x[0], touch_y[0]);
             }
 
             ISR_TOUCH_TRIGGERED = false;
@@ -40,9 +40,10 @@ void Touch::processTouchEventTask(void *pvParameter)
     }
 }
 
-void Touch::setup()
+void Touch::setup(std::function<void(uint16_t, uint16_t)> callback)
 {
     ESP_LOGI(TAG, "Setup Touch");
+    onTouchCoordinates = callback;
 
     esp_lcd_touch_config_t tp_cfg = {
         .x_max = LCD_H_RES,
