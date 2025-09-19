@@ -11,7 +11,23 @@
 // LVGL library is not thread-safe, this will call LVGL APIs from different tasks, so use a mutex to protect it
 static _lock_t lvgl_api_lock;
 
-static uint32_t cnt = 1;
+void Render::loadUserInterface()
+{
+    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x003a57), LV_PART_MAIN);
+
+    cntLabel = lv_label_create(lv_screen_active());
+    lv_label_set_text_fmt(cntLabel, "Nori");
+    lv_obj_set_style_text_font(cntLabel, &lv_font_montserrat_48, LV_PART_MAIN);
+    lv_obj_set_style_text_color(lv_screen_active(), lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_align(cntLabel, LV_ALIGN_CENTER, 0, 0);
+}
+
+void Render::UpdateValue(uint8_t value)
+{
+    if (cntLabel) {
+        lv_label_set_text_fmt(cntLabel, "%u", (unsigned int)value);
+    }
+}
 
 void Render::setup(TouchDisplay& touchDisplay)
 {
@@ -71,25 +87,6 @@ void Render::setup(TouchDisplay& touchDisplay)
     _lock_release(&lvgl_api_lock);
 }
 
-void Render::loadUserInterface()
-{
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x003a57), LV_PART_MAIN);
-
-    cntLabel = lv_label_create(lv_screen_active());
-    lv_label_set_text_fmt(cntLabel, "Nori: %lu", cnt);
-    lv_obj_set_style_text_font(cntLabel, &lv_font_montserrat_40, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lv_screen_active(), lv_color_hex(0xffffff), LV_PART_MAIN);
-    lv_obj_align(cntLabel, LV_ALIGN_CENTER, 0, 0);
-}
-
-void Render::UpdateIntValue()
-{
-    cnt++;
-    if (cntLabel) {
-        lv_label_set_text_fmt(cntLabel, "Nori: %lu", cnt);
-    }
-}
-
 void Render::lvglMainLoopTask(void *arg)
 {
     ESP_LOGI(LVGL_TAG, "Starting LVGL task");
@@ -132,9 +129,4 @@ bool Render::lvglNotifyFlushReadyCallback(esp_lcd_panel_io_handle_t panel_io, es
     lv_display_t *disp = (lv_display_t *)user_ctx;
     lv_display_flush_ready(disp);
     return false;
-}
-
-void Render::lvglSetObjectAngle(void * obj, int32_t v)
-{
-    lv_arc_set_value(static_cast<lv_obj_t *>(obj), v);
 }

@@ -12,7 +12,6 @@ Render* render = nullptr;
 
 void onTouch(uint16_t x, uint16_t y) {
     ESP_LOGI("MAIN", "Touch handled in main! Coordinates: (%d, %d)", x, y);
-    render->UpdateIntValue();
 }
 
 #include "NimBLEDevice.h"
@@ -20,7 +19,7 @@ void onTouch(uint16_t x, uint16_t y) {
 static const NimBLEAdvertisedDevice* advDevice;
 static bool                          doConnect  = false;
 static uint32_t                      scanTimeMs = 5000; /** scan time in milliseconds, 0 = scan forever */
-static NimBLEAddress peripheralAddress= NimBLEAddress("5C:37:BC:67:22:6E", BLE_ADDR_RANDOM);
+static NimBLEAddress peripheralAddress= NimBLEAddress("78:06:9E:60:E2:2D", BLE_ADDR_RANDOM);
 
 class ScanCallbacks : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
@@ -45,13 +44,7 @@ class ScanCallbacks : public NimBLEScanCallbacks {
 } scanCallbacks;
 
 void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
-    std::string str  = (isNotify == true) ? "Notification" : "Indication";
-    str             += " from ";
-    str             += pRemoteCharacteristic->getClient()->getPeerAddress().toString();
-    str             += ": Service = " + pRemoteCharacteristic->getRemoteService()->getUUID().toString();
-    str             += ", Characteristic = " + pRemoteCharacteristic->getUUID().toString();
-    str             += ", Value = " + std::string((char*)pData, length);
-    printf("%s\n", str.c_str());
+    render->UpdateValue(*pData);
 }
 
 bool connectToServer() {
@@ -127,8 +120,6 @@ bool connectToServer() {
         printf("Heart rate service not found.\n");
     }
 
-    printf("Done with this device!\n");
-
     return true;
 }
 
@@ -143,9 +134,6 @@ void setupBluetooth()
     pScan->setActiveScan(true);
     pScan->start(scanTimeMs);
 
-    printf("Scanning for peripherals\n");
-
-    /** Loop here until we find a device we want to connect to */
     for (;;) {
         vTaskDelay(10 / portTICK_PERIOD_MS);
 
@@ -153,10 +141,8 @@ void setupBluetooth()
             doConnect = false;
 
             if (connectToServer()) {
-                printf("Success! we should now be getting notifications, scanning for more!\n");
-            } else {
-                printf("Failed to connect, starting scan\n");
-            }
+                printf("Successfully subscribed to service!\n");
+            } 
         }
     }
 }
@@ -166,14 +152,14 @@ extern "C" void app_main(void) {
     ESP_ERROR_CHECK(core::init_spi_bus());
     ESP_ERROR_CHECK(core::init_i2c_bus());
 
-    // touch = new Touch();
-    // touch->setup(onTouch);
+    touch = new Touch();
+    touch->setup(onTouch);
 
-    // touchDisplay = new TouchDisplay();
-    // touchDisplay->init();
+    touchDisplay = new TouchDisplay();
+    touchDisplay->init();
 
-    // render = new Render();
-    // render->setup(*touchDisplay);
+    render = new Render();
+    render->setup(*touchDisplay);
 
     setupBluetooth();
 }
