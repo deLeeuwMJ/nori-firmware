@@ -19,13 +19,15 @@ void onTouch(uint16_t x, uint16_t y) {
 static const NimBLEAdvertisedDevice* advDevice;
 static bool                          doConnect  = false;
 static uint32_t                      scanTimeMs = 5000; /** scan time in milliseconds, 0 = scan forever */
-static NimBLEAddress peripheralAddress= NimBLEAddress("78:06:9E:60:E2:2D", BLE_ADDR_RANDOM);
+static NimBLEAddress peripheralAddress= NimBLEAddress("3c:71:bf:fd:83:56", BLE_ADDR_PUBLIC);
+static constexpr char* OBD2_SERVICE_UUID = "52d764ea-122d-4d01-8326-53e00a6ca36d";
+static constexpr char* SPEED_CHAR_UUID = "a1247688-4bf1-40ec-bd6a-91724982e094";
 
 class ScanCallbacks : public NimBLEScanCallbacks {
     void onResult(const NimBLEAdvertisedDevice* advertisedDevice) override {
-        if (advertisedDevice->getAddress() == peripheralAddress) {
-            printf("Advertised Device found: %s\n", advertisedDevice->toString().c_str());
+        printf("Advertised Device found: %s\n", advertisedDevice->toString().c_str());
 
+        if (advertisedDevice->getAddress() == peripheralAddress) {
             /** stop scan before connecting */
             NimBLEDevice::getScan()->stop();
 
@@ -50,28 +52,28 @@ void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData,
 bool connectToServer() {
     NimBLEClient* pClient = nullptr;
 
-    /** Check if we have a client we should reuse first **/
-    if (NimBLEDevice::getCreatedClientCount()) {
-        /**
-         *  Special case when we already know this device, we send false as the
-         *  second argument in connect() to prevent refreshing the service database.
-         *  This saves considerable time and power.
-         */
-        pClient = NimBLEDevice::getClientByPeerAddress(advDevice->getAddress());
-        if (pClient) {
-            if (!pClient->connect(advDevice, false)) {
-                printf("Reconnect failed\n");
-                return false;
-            }
-            printf("Reconnected client\n");
-        } else {
-            /**
-             *  We don't already have a client that knows this device,
-             *  check for a client that is disconnected that we can use.
-             */
-            pClient = NimBLEDevice::getDisconnectedClient();
-        }
-    }
+    // /** Check if we have a client we should reuse first **/
+    // if (NimBLEDevice::getCreatedClientCount()) {
+    //     /**
+    //      *  Special case when we already know this device, we send false as the
+    //      *  second argument in connect() to prevent refreshing the service database.
+    //      *  This saves considerable time and power.
+    //      */
+    //     pClient = NimBLEDevice::getClientByPeerAddress(advDevice->getAddress());
+    //     if (pClient) {
+    //         if (!pClient->connect(advDevice, false)) {
+    //             printf("Reconnect failed\n");
+    //             return false;
+    //         }
+    //         printf("Reconnected client\n");
+    //     } else {
+    //         /**
+    //          *  We don't already have a client that knows this device,
+    //          *  check for a client that is disconnected that we can use.
+    //          */
+    //         pClient = NimBLEDevice::getDisconnectedClient();
+    //     }
+    // }
 
     /** No client to reuse? Create a new one. */
     if (!pClient) {
@@ -81,8 +83,8 @@ bool connectToServer() {
         }
 
         pClient = NimBLEDevice::createClient();
-        pClient->setConnectionParams(12, 12, 0, 150);
-        pClient->setConnectTimeout(5 * 1000);
+        // pClient->setConnectionParams(12, 12, 0, 150);
+        // pClient->setConnectTimeout(5 * 1000);
 
         if (!pClient->connect(advDevice)) {
             NimBLEDevice::deleteClient(pClient);
@@ -104,9 +106,9 @@ bool connectToServer() {
     NimBLERemoteService*        pSvc = nullptr;
     NimBLERemoteCharacteristic* pChr = nullptr;
 
-    pSvc = pClient->getService("0000180d-0000-1000-8000-00805f9b34fb"); // Heart Rate Service
+    pSvc = pClient->getService(OBD2_SERVICE_UUID);
     if (pSvc) {
-        pChr = pSvc->getCharacteristic("00002a37-0000-1000-8000-00805f9b34fb"); // Heart Rate Notify
+        pChr = pSvc->getCharacteristic(SPEED_CHAR_UUID);
     }
 
     if (pChr) {

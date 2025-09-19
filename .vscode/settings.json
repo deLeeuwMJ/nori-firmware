@@ -7,5 +7,6 @@
     "idf.monitorPort": "COM5",
     "idf.openOcdConfigs": [
         "board/esp32s3-builtin.cfg"
-    ]
+    ],
+    "cmake.sourceDirectory": "C:/Users/jayso/Documents/Github/nori-firmware/firmware/main"
 }

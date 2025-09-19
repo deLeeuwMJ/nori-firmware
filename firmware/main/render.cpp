@@ -25,7 +25,7 @@ void Render::loadUserInterface()
 void Render::UpdateValue(uint8_t value)
 {
     if (cntLabel) {
-        lv_label_set_text_fmt(cntLabel, "%u", (unsigned int)value);
+        lv_label_set_text_fmt(cntLabel, "%u km/h", (unsigned int)value);
     }
 }
 

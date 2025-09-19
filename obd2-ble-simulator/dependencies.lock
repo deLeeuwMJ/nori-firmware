@@ -1,0 +1,30 @@
+dependencies:
+  h2zero/esp-nimble-cpp:
+    component_hash: 2abbd3e11011da5e24e24433738d6fc705ac92b1fcac7784ca5d533898c1ef7b
+    dependencies:
+    - name: espressif/esp_hosted
+      rules:
+      - if: target in [esp32p4]
+      version: '*'
+    - name: espressif/esp_wifi_remote
+      rules:
+      - if: target in [esp32p4]
+      version: '>=0.5.3'
+    - name: idf
+      rules:
+      - if: target in [esp32p4]
+      version: '>=5.3.0'
+    source:
+      git: https://github.com/h2zero/esp-nimble-cpp
+      path: .
+      type: git
+    version: 815c5556e0f1150e37d8b3ffc20c6340505a13ca
+  idf:
+    source:
+      type: idf
+    version: 5.5.1
+direct_dependencies:
+- h2zero/esp-nimble-cpp
+manifest_hash: c2f1fb722357d33f9c9525911df52a732209f8e5f86c3b9be9b0ea8cc94ff828
+target: esp32
+version: 2.0.0
