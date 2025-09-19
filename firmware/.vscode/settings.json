@@ -89,6 +89,7 @@
     "thread": "cpp",
     "cinttypes": "cpp",
     "typeinfo": "cpp",
-    "variant": "cpp"
+    "variant": "cpp",
+    "sysinit.h": "c"
   }
 }
