@@ -32,7 +32,7 @@ Keep in mind that all these codes start with 'AT" and require '\r' at the end.
 | Device Description | I |
 | Protocol Information | DP |
 
-E.g. A write is done with 'ATI\r', the response will be '410C1F2E\r' followed by '\r>'
+E.g. A write is done with 'ATI\r', the response will be a repeat of write, then '410C1F2E\r' followed by '\r>'
 
 More can be found on [Sparkfun](https://cdn.sparkfun.com/assets/4/e/5/0/2/ELM327_AT_Commands.pdf).
 
