@@ -49,11 +49,14 @@ class ScanCallbacks : public NimBLEScanCallbacks {
 
 void notifyCB(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
     std::string rawValue = std::string((char*)pData, length);
-    if (rawValue.starts_with("410D"))
+    if (rawValue.starts_with("41 0D"))
     {
-        std::string retrievedSpeed = rawValue.substr(4,5); //410D33\r
-        uint8_t decimalValue = std::stoi(retrievedSpeed, nullptr, 16); // 51
-        render->UpdateValue(*pData);
+        std::string retrievedSpeed = rawValue.substr(6,2); //41 0D 33 \r
+        printf("Retrieved speed HEX: %s\n", retrievedSpeed.c_str());
+        uint8_t decimalValue = std::stoi(retrievedSpeed, nullptr, 16);
+
+        printf("Retrieved speed DEC: %u\n", decimalValue);
+        render->UpdateValue(decimalValue);
     }
 }
 

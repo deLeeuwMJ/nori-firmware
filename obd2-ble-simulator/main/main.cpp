@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "esp_random.h"
 #include <NimBLEDevice.h>
+#include <sstream>
+#include <iomanip>
 
 static NimBLEServer* pServer;
 
@@ -22,7 +24,12 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
             printf("Command: %s\n", commandStr.c_str());
 
             if (strcmp(commandStr.c_str(), "0D")) {
-                std::string responseStr = "410D33\r";
+                uint32_t randomNumber = esp_random() % 130;
+
+                std::stringstream randomNumberHex;
+                randomNumberHex << std::hex << randomNumber;
+
+                std::string responseStr = "41 0D "+ randomNumberHex.str() + " \r";
                 pCharacteristic->notify(responseStr);
             }
         }
