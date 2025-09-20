@@ -4,76 +4,51 @@
 
 static NimBLEServer* pServer;
 
-static constexpr char* OBD2_SERVICE_UUID = "52d764ea-122d-4d01-8326-53e00a6ca36d";
-static constexpr char* SPEED_CHAR_UUID = "a1247688-4bf1-40ec-bd6a-91724982e094";
+static constexpr char* VLINK_SERVICE_UUID = "e7810a71-73ae-499d-8c15-faa9aef0c3f2";
+static constexpr char* CNTRL_CHAR_UUID = "bef8d6c9-9c21-4c9e-b632-bd58c1009f9f";
 
-class ServerCallbacks : public NimBLEServerCallbacks {
-    void onConnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo) override {
-        printf("Client address: %s\n", connInfo.getAddress().toString().c_str());
+class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
+    
+    void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override {
+        std::string rawValue = pCharacteristic->getValue().c_str();
 
-        /**
-         *  We can use the connection handle here to ask for different connection parameters.
-         *  Args: connection handle, min connection interval, max connection interval
-         *  latency, supervision timeout.
-         *  Units; Min/Max Intervals: 1.25 millisecond increments.
-         *  Latency: number of intervals allowed to skip.
-         *  Timeout: 10 millisecond increments.
-         */
-        pServer->updateConnParams(connInfo.getConnHandle(), 24, 48, 0, 180);
-    }
+        // Sent message to repeat request
+        printf("%s : onWrite(), value: %s\n",pCharacteristic->getUUID().toString().c_str(), rawValue.c_str());
+        pCharacteristic->notify(rawValue);
 
-    void onDisconnect(NimBLEServer* pServer, NimBLEConnInfo& connInfo, int reason) override {
-        printf("Client disconnected - start advertising\n");
-        NimBLEDevice::startAdvertising();
-    }
+        // Process command and respond
+        if (rawValue.size() > 0) {
+            std::string commandStr = rawValue.substr(2,3);
+            printf("Command: %s\n", commandStr.c_str());
 
-    void onMTUChange(uint16_t MTU, NimBLEConnInfo& connInfo) override {
-        printf("MTU updated: %u for connection ID: %u\n", MTU, connInfo.getConnHandle());
-    }
-
-    /********************* Security handled here *********************/
-    uint32_t onPassKeyDisplay() override {
-        printf("Server Passkey Display\n");
-        /**
-         * This should return a random 6 digit number for security
-         *  or make your own static passkey as done here.
-         */
-        return 123456;
-    }
-
-    void onConfirmPassKey(NimBLEConnInfo& connInfo, uint32_t pass_key) override {
-        printf("The passkey YES/NO number: %" PRIu32 "\n", pass_key);
-        /** Inject false if passkeys don't match. */
-        NimBLEDevice::injectConfirmPasskey(connInfo, true);
-    }
-
-    void onAuthenticationComplete(NimBLEConnInfo& connInfo) override {
-        /** Check that encryption was successful, if not we disconnect the client */
-        if (!connInfo.isEncrypted()) {
-            NimBLEDevice::getServer()->disconnect(connInfo.getConnHandle());
-            printf("Encrypt connection failed - disconnecting client\n");
-            return;
+            if (strcmp(commandStr.c_str(), "0D")) {
+                std::string responseStr = "410D33\r";
+                pCharacteristic->notify(responseStr);
+            }
         }
 
-        printf("Secured connection to: %s\n", connInfo.getAddress().toString().c_str());
+        // Notify with ending message
+        std::string endStr = "\r>";
+        pCharacteristic->notify(endStr);
     }
-} serverCallbacks;
+} chrCallbacks;
 
 extern "C" void app_main(void) {
-    NimBLEDevice::init("Nori-Simulator");
+    NimBLEDevice::init("Vlink-Simulator");
     NimBLEDevice::setOwnAddrType(BLE_OWN_ADDR_PUBLIC);
 
     pServer = NimBLEDevice::createServer();
-    pServer->setCallbacks(&serverCallbacks);
     
-    NimBLEService*        pObd2Service = pServer->createService(OBD2_SERVICE_UUID);
-    NimBLECharacteristic* pSpeedCharacteristic = pObd2Service->createCharacteristic(SPEED_CHAR_UUID, NIMBLE_PROPERTY::NOTIFY);
+    NimBLEService*        pObd2Service = pServer->createService(VLINK_SERVICE_UUID);
+    NimBLECharacteristic* pControlCharacteristic = pObd2Service->createCharacteristic(CNTRL_CHAR_UUID, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::WRITE);
     
-    pSpeedCharacteristic->setValue(0x00);
+    pControlCharacteristic->setValue(0x00);
+    pControlCharacteristic->setCallbacks(&chrCallbacks);
+
     pObd2Service->start();
 
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
-    pAdvertising->setName("Nori-Simulator-Obd2");
+    pAdvertising->setName("IOS-Vlink");
     pAdvertising->addServiceUUID(pObd2Service->getUUID());
 
     pAdvertising->enableScanResponse(true);
@@ -82,16 +57,6 @@ extern "C" void app_main(void) {
     printf("Advertising Started\n");
 
     for (;;) {
-        if (pServer->getConnectedCount()) {
-            NimBLEService* pSvc = pServer->getServiceByUUID(OBD2_SERVICE_UUID);
-            if (pSvc) {
-                NimBLECharacteristic* pChr = pSvc->getCharacteristic(SPEED_CHAR_UUID);
-                if (pChr) {
-                    uint32_t randomNumber = esp_random() % 150;
-                    pChr->notify(randomNumber);
-                }
-            }
-        }
-        vTaskDelay(2500 / portTICK_PERIOD_MS);
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
 }
