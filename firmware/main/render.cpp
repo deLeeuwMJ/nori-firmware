@@ -7,38 +7,69 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/spi_master.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 // LVGL library is not thread-safe, this will call LVGL APIs from different tasks, so use a mutex to protect it
-static _lock_t lvgl_api_lock;
+static SemaphoreHandle_t lvgl_api_mutex;
+
+static lv_obj_t *label;
+static lv_obj_t *arc;
+static void value_changed_event_cb(lv_event_t * e);
+
+static void value_changed_event_cb(lv_event_t * e)
+{
+    lv_label_set_text_fmt(label, "%" LV_PRId32 "%%", lv_arc_get_value(arc));
+
+    /*Rotate the label to the current position of the arc*/
+    lv_arc_rotate_obj_to_angle(arc, label, 25);
+}
 
 void Render::loadUserInterface()
 {
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x003a57), LV_PART_MAIN);
+    
+    lv_obj_t *logoLabel = lv_label_create(lv_screen_active());
+    lv_label_set_text_fmt(logoLabel, "Nori");
+    lv_obj_set_style_text_font(logoLabel, &lv_font_montserrat_28, LV_PART_MAIN);
+    lv_obj_set_style_text_color(logoLabel, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_align(logoLabel, LV_ALIGN_CENTER, 0, -25);
 
-    cntLabel = lv_label_create(lv_screen_active());
-    lv_label_set_text_fmt(cntLabel, "Nori");
-    lv_obj_set_style_text_font(cntLabel, &lv_font_montserrat_48, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lv_screen_active(), lv_color_hex(0xffffff), LV_PART_MAIN);
-    lv_obj_align(cntLabel, LV_ALIGN_CENTER, 0, 0);
+    textLabel = lv_label_create(lv_screen_active());
+    lv_label_set_text_fmt(textLabel, "-");
+    lv_obj_set_style_text_font(textLabel, &lv_font_montserrat_32, LV_PART_MAIN);
+    lv_obj_set_style_text_color(textLabel, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_align(textLabel, LV_ALIGN_CENTER, 0, 5);
+
+    label = lv_label_create(lv_screen_active());
+    arc = lv_arc_create(lv_screen_active());
+    lv_obj_set_size(arc, 250, 250);
+    lv_arc_set_rotation(arc, 135);
+    lv_arc_set_bg_angles(arc, 0, 270);
+    lv_arc_set_value(arc, 0); //default
+    lv_arc_set_range(arc, 0, 150);
+    lv_obj_center(arc);
+    lv_obj_add_event_cb(arc, value_changed_event_cb, LV_EVENT_VALUE_CHANGED, label);
+    lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
+    lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
 }
 
 void Render::UpdateValue(uint8_t value)
 {
-    if (cntLabel) {
-        lv_label_set_text_fmt(cntLabel, "%u km/h", (unsigned int)value);
-    }
+    if (textLabel)
+        lv_label_set_text_fmt(textLabel, "%u km/h", (unsigned int)value);
+    
+    if (arc)
+        lv_arc_set_value(arc, value);
 }
 
 void Render::setup(TouchDisplay& touchDisplay)
 {
     ESP_LOGI(TAG, "Initialize LVGL library");
+    lvgl_api_mutex = xSemaphoreCreateMutex();
+
     lv_init();
-
-    // create a lvgl display
     lv_display_t *display = lv_display_create(LCD_H_RES, LCD_V_RES);
-
-    // alloc draw buffers used by LVGL
-    // it's recommended to choose the size of the draw buffer(s) to be at least 1/10 screen sized
     size_t draw_buffer_sz = LCD_H_RES * LVGL_DRAW_BUF_LINES * sizeof(lv_color16_t);
 
     void *buf1 = spi_bus_dma_memory_alloc(LCD_HOST, draw_buffer_sz, 0);
@@ -46,16 +77,9 @@ void Render::setup(TouchDisplay& touchDisplay)
     void *buf2 = spi_bus_dma_memory_alloc(LCD_HOST, draw_buffer_sz, 0);
     assert(buf2);
 
-    // initialize LVGL draw buffers
     lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
-
-    // associate the mipi panel handle to the display
     lv_display_set_user_data(display, touchDisplay.getPanelHandle());
-
-    // set color depth
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
-
-    // set the callback which can copy the rendered image to an area of the display
     lv_display_set_flush_cb(display, lvglFlushScreen);
 
     ESP_LOGI(TAG, "Install LVGL tick timer");
@@ -73,18 +97,14 @@ void Render::setup(TouchDisplay& touchDisplay)
         .on_color_trans_done = &lvglNotifyFlushReadyCallback,
     };
 
-    /* Register done callback */
     ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(touchDisplay.getPanelIOHandle(), &cbs, display));
 
     ESP_LOGI(TAG, "Create LVGL task");
     xTaskCreate(lvglMainLoopTask, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
 
-    ESP_LOGI(TAG, "Display LVGL Meter Widget");
-
-    // Lock the mutex due to the LVGL APIs are not thread-safe
-    _lock_acquire(&lvgl_api_lock);
+    xSemaphoreTake(lvgl_api_mutex, portMAX_DELAY);
     loadUserInterface();
-    _lock_release(&lvgl_api_lock);
+    xSemaphoreGive(lvgl_api_mutex);
 }
 
 void Render::lvglMainLoopTask(void *arg)
@@ -93,14 +113,11 @@ void Render::lvglMainLoopTask(void *arg)
     uint32_t time_till_next_ms = 0;
 
     while (1) {
-        _lock_acquire(&lvgl_api_lock);
+        xSemaphoreTake(lvgl_api_mutex, portMAX_DELAY);
         time_till_next_ms = lv_timer_handler();
-        _lock_release(&lvgl_api_lock);
-        // in case of triggering a task watch dog time out
-        time_till_next_ms = MAX(time_till_next_ms, LVGL_TASK_MIN_DELAY_MS);
-        // in case of lvgl display not ready yet
-        time_till_next_ms = MIN(time_till_next_ms, LVGL_TASK_MAX_DELAY_MS);
-        usleep(1000 * time_till_next_ms);
+        xSemaphoreGive(lvgl_api_mutex);
+
+        vTaskDelay(pdMS_TO_TICKS(time_till_next_ms));
     }
 }
 
@@ -117,10 +134,10 @@ void Render::lvglFlushScreen(lv_display_t *disp, const lv_area_t *area, uint8_t 
     int offsety1 = area->y1;
     int offsety2 = area->y2;
 
-    // because SPI LCD is big-endian, we need to swap the RGB bytes order
+    // Optimization: This byte swap can be removed if the hardware is configured to do it.
+    // Check the panel driver for a "swap_bytes" or similar configuration.
     lv_draw_sw_rgb565_swap(px_map, (offsetx2 + 1 - offsetx1) * (offsety2 + 1 - offsety1));
 
-    // copy a buffer's content to a specific area of the display
     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
 }
 

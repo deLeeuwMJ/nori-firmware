@@ -18,5 +18,5 @@ class Render
         static void lvglFlushScreen(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
         static bool lvglNotifyFlushReadyCallback(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx);
 
-        lv_obj_t* cntLabel = nullptr;
+        lv_obj_t *textLabel = nullptr;
     };
