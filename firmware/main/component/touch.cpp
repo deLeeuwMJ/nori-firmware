@@ -1,9 +1,10 @@
-#include "touch.hpp"
 #include "driver/gpio.h"
 #include "esp_lcd_touch_cst816s.h"
 #include "esp_err.h"
 #include "esp_log.h"
-#include "config.hpp"
+
+#include "touch.hpp"
+#include "../component/display.hpp"
 
 // TODO MOVE TO USING MUTEX
 static esp_lcd_touch_handle_t tp = NULL;
@@ -18,6 +19,8 @@ void Touch::touchCallback(esp_lcd_touch_handle_t tp)
 
 void Touch::processTouchEventTask(void *pvParameter)
 {
+    ESP_LOGI(LOG_TAG_TOUCH_EVENT, "Started touch event task");
+
     while (1) {
         if (ISR_TOUCH_TRIGGERED) {
             esp_lcd_touch_read_data(tp);
@@ -36,13 +39,13 @@ void Touch::processTouchEventTask(void *pvParameter)
             ISR_TOUCH_TRIGGERED = false;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(100)); // Poll every 10 ms
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
 void Touch::setup(std::function<void(uint16_t, uint16_t)> callback)
 {
-    ESP_LOGI(TAG, "Setup Touch");
+    ESP_LOGI(LOG_TAG_TOUCH, "Setup Touch IO");
     onTouchCoordinates = callback;
 
     esp_lcd_touch_config_t tp_cfg = {
@@ -77,5 +80,5 @@ void Touch::setup(std::function<void(uint16_t, uint16_t)> callback)
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(I2C_NUM_0, &tp_io_config, &tp_io_handle));
     ESP_ERROR_CHECK(esp_lcd_touch_new_i2c_cst816s(tp_io_handle, &tp_cfg, &tp));
 
-    xTaskCreate(processTouchEventTask, TOUCH_TAG, 4096, NULL, 5, NULL);
+    xTaskCreate(processTouchEventTask, TASK_TOUCH, 4096, NULL, 5, NULL);
 }

@@ -1,9 +1,10 @@
-#include "display.hpp"
 #include "esp_log.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_gc9a01.h"
 #include "driver/gpio.h"
-#include "config.hpp"
+
+#include "display.hpp"
+#include "../core/board.hpp"
 
 TouchDisplay::~TouchDisplay()
 {
@@ -22,21 +23,21 @@ void TouchDisplay::init()
 
 esp_err_t TouchDisplay::turnOnDisplay()
 {
-    ESP_LOGI(TAG, "Turn on Display");
+    ESP_LOGI(LOG_TAG_DISPLAY, "Turn on Display");
 
     auto ret = esp_lcd_panel_disp_on_off(panel_handle, true);
     if (ret != ESP_OK) return ret;
 
-    ESP_LOGI(TAG, "Turn on LCD backlight");
-    return gpio_set_level(CONFIG_PIN_NUM_BK_LIGHT, CONFIG_LCD_BK_LIGHT_ON_LEVEL);
+    ESP_LOGI(LOG_TAG_DISPLAY, "Turn on LCD backlight");
+    return gpio_set_level(LCD_GPIO_BK_LIGHT, LCD_BK_LIGHT_ON_LEVEL);
 }
 
 esp_err_t TouchDisplay::turnOffDisplay()
 {
-    ESP_LOGI(TAG, "Turn off LCD backlight");
+    ESP_LOGI(LOG_TAG_DISPLAY, "Turn off LCD backlight");
 
     gpio_config_t bk_gpio_config = {
-        .pin_bit_mask = 1ULL << CONFIG_PIN_NUM_BK_LIGHT,
+        .pin_bit_mask = 1ULL << LCD_GPIO_BK_LIGHT,
         .mode = GPIO_MODE_OUTPUT
     };
 
@@ -45,13 +46,13 @@ esp_err_t TouchDisplay::turnOffDisplay()
 
 esp_err_t TouchDisplay::installPanelIO()
 {
-    ESP_LOGI(TAG, "Install panel IO");
+    ESP_LOGI(LOG_TAG_DISPLAY, "Install panel IO");
 
     esp_lcd_panel_io_spi_config_t lcd_config = {
-        .cs_gpio_num = CONFIG_PIN_NUM_LCD_CS,
-        .dc_gpio_num = CONFIG_PIN_NUM_LCD_DC,
+        .cs_gpio_num = LCD_GPIO_CS,
+        .dc_gpio_num = LCD_GPIO_DC,
         .spi_mode = 0,
-        .pclk_hz = CONFIG_LCD_PIXEL_CLOCK_HZ,
+        .pclk_hz =LCD_PIXEL_CLOCK_HZ,
         .trans_queue_depth = 10,
         .lcd_cmd_bits = LCD_CMD_BITS,
         .lcd_param_bits = LCD_PARAM_BITS,
@@ -62,10 +63,10 @@ esp_err_t TouchDisplay::installPanelIO()
 
 esp_err_t TouchDisplay::installPanelDriver()
 {
-    ESP_LOGI(TAG, "Install GC9A01 panel driver");
+    ESP_LOGI(LOG_TAG_DISPLAY, "Install GC9A01 panel driver");
 
     esp_lcd_panel_dev_config_t panel_config = {
-        .reset_gpio_num = CONFIG_PIN_NUM_LCD_RST,
+        .reset_gpio_num = GPIO_RST,
         .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
         .bits_per_pixel = 16,
     };

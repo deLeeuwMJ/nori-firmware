@@ -1,5 +1,4 @@
-#include "render.hpp"
-#include "config.hpp"
+
 #include "lvgl.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_timer.h"
@@ -10,62 +9,46 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 
-// LVGL library is not thread-safe, this will call LVGL APIs from different tasks, so use a mutex to protect it
-static SemaphoreHandle_t lvgl_api_mutex;
+#include "render.hpp"
 
-static lv_obj_t *label;
-static lv_obj_t *arc;
-static void value_changed_event_cb(lv_event_t * e);
-
-static void value_changed_event_cb(lv_event_t * e)
+Render::~Render()
 {
-    lv_label_set_text_fmt(label, "%" LV_PRId32 "%%", lv_arc_get_value(arc));
-
-    /*Rotate the label to the current position of the arc*/
-    lv_arc_rotate_obj_to_angle(arc, label, 25);
+    lvgl_api_mutex = nullptr;
+    fa_icon_style = nullptr;
+    textLabel = nullptr;
 }
 
 void Render::loadUserInterface()
 {
-    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x003a57), LV_PART_MAIN);
+    lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(COLOR_HEX_INDIGO), LV_PART_MAIN);
     
     lv_obj_t *logoLabel = lv_label_create(lv_screen_active());
-    lv_label_set_text_fmt(logoLabel, "Nori");
+    lv_label_set_text_fmt(logoLabel, LABEL_TEXT);
     lv_obj_set_style_text_font(logoLabel, &lv_font_montserrat_28, LV_PART_MAIN);
-    lv_obj_set_style_text_color(logoLabel, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_text_color(logoLabel, lv_color_hex(COLOR_HEX_BLUE), LV_PART_MAIN);
     lv_obj_align(logoLabel, LV_ALIGN_CENTER, 0, -25);
+
+    // lv_obj_t icon_fuel = lv_label_create(lv_screen_active());
+    // lv_label_set_text(icon_fuel, FUEL_SYMBOL);
+    // lv_obj_add_style(icon_fuel, &fa_icon_style, LV_PART_MAIN);
+    // lv_obj_align(icon_fuel, LV_ALIGN_BOTTOM_MID, 0, -20);
 
     textLabel = lv_label_create(lv_screen_active());
     lv_label_set_text_fmt(textLabel, "-");
     lv_obj_set_style_text_font(textLabel, &lv_font_montserrat_32, LV_PART_MAIN);
-    lv_obj_set_style_text_color(textLabel, lv_color_hex(0xffffff), LV_PART_MAIN);
+    lv_obj_set_style_text_color(textLabel, lv_color_hex(COLOR_HEX_WHITE), LV_PART_MAIN);
     lv_obj_align(textLabel, LV_ALIGN_CENTER, 0, 5);
-
-    label = lv_label_create(lv_screen_active());
-    arc = lv_arc_create(lv_screen_active());
-    lv_obj_set_size(arc, 250, 250);
-    lv_arc_set_rotation(arc, 135);
-    lv_arc_set_bg_angles(arc, 0, 270);
-    lv_arc_set_value(arc, 0); //default
-    lv_arc_set_range(arc, 0, 150);
-    lv_obj_center(arc);
-    lv_obj_add_event_cb(arc, value_changed_event_cb, LV_EVENT_VALUE_CHANGED, label);
-    lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
-    lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
 }
 
-void Render::UpdateValue(uint8_t value)
+void Render::updateValue(Events::CarEventData data)
 {
     if (textLabel)
-        lv_label_set_text_fmt(textLabel, "%u km/h", (unsigned int)value);
-    
-    if (arc)
-        lv_arc_set_value(arc, value);
+        lv_label_set_text_fmt(textLabel, "%u km/h", (unsigned int)data.value);
 }
 
 void Render::setup(TouchDisplay& touchDisplay)
 {
-    ESP_LOGI(TAG, "Initialize LVGL library");
+    ESP_LOGI(LOG_TAG_RENDER, "Initialize LVGL library");
     lvgl_api_mutex = xSemaphoreCreateMutex();
 
     lv_init();
@@ -82,7 +65,7 @@ void Render::setup(TouchDisplay& touchDisplay)
     lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
     lv_display_set_flush_cb(display, lvglFlushScreen);
 
-    ESP_LOGI(TAG, "Install LVGL tick timer");
+    ESP_LOGI(LOG_TAG_RENDER, "Install LVGL tick timer");
     // Tick interface for LVGL (using esp_timer to generate 2ms periodic event)
     const esp_timer_create_args_t lvgl_tick_timer_args = {
         .callback = &lvglTickTimerCallback,
@@ -92,15 +75,19 @@ void Render::setup(TouchDisplay& touchDisplay)
     ESP_ERROR_CHECK(esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, LVGL_TICK_PERIOD_MS * 1000));
 
-    ESP_LOGI(TAG, "Register io panel event callback for LVGL flush ready notification");
+    ESP_LOGI(LOG_TAG_RENDER, "Register io panel event callback for LVGL flush ready notification");
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = &lvglNotifyFlushReadyCallback,
     };
 
     ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(touchDisplay.getPanelIOHandle(), &cbs, display));
 
-    ESP_LOGI(TAG, "Create LVGL task");
-    xTaskCreate(lvglMainLoopTask, "LVGL", LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
+    xTaskCreate(lvglMainLoopTask, TASK_NAME_LVGL, LVGL_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY, NULL);
+
+    // FontAwesome Icon
+    lv_style_init(fa_icon_style);
+    lv_style_set_text_font(fa_icon_style, &fa_icons); 
+    lv_style_set_text_color(fa_icon_style, lv_color_hex(COLOR_HEX_MAIZE));
 
     xSemaphoreTake(lvgl_api_mutex, portMAX_DELAY);
     loadUserInterface();
@@ -109,7 +96,7 @@ void Render::setup(TouchDisplay& touchDisplay)
 
 void Render::lvglMainLoopTask(void *arg)
 {
-    ESP_LOGI(LVGL_TAG, "Starting LVGL task");
+    ESP_LOGI(LOG_TAG_LVGL, "Starting LVGL task");
     uint32_t time_till_next_ms = 0;
 
     while (1) {
@@ -134,8 +121,6 @@ void Render::lvglFlushScreen(lv_display_t *disp, const lv_area_t *area, uint8_t 
     int offsety1 = area->y1;
     int offsety2 = area->y2;
 
-    // Optimization: This byte swap can be removed if the hardware is configured to do it.
-    // Check the panel driver for a "swap_bytes" or similar configuration.
     lv_draw_sw_rgb565_swap(px_map, (offsetx2 + 1 - offsetx1) * (offsety2 + 1 - offsety1));
 
     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
