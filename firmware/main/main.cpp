@@ -15,6 +15,9 @@ Render* render = nullptr;
 static void carEventCallback(Events::CarEventData data)
 {
     ESP_LOGI("ELM327", "Event: %s (Value: %d)\n", carEventToString(data.event).c_str(), std::stoi(data.value.c_str(), nullptr, 16));
+
+    if (render)
+        render->updateCarValue(data);
 }
 
 static void motionEventCallback(MotionEventData data)
@@ -23,6 +26,9 @@ static void motionEventCallback(MotionEventData data)
         data.accelerometer.x, data.accelerometer.y, data.accelerometer.z,
         data.gyro.x, data.gyro.y, data.gyro.z
     );
+
+    if (render)
+        render->updateMotionValue(data);
 }
 
 extern "C" void app_main(void) {
