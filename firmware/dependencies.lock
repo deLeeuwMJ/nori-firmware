@@ -92,12 +92,23 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 9.2.0
+  waveshare/qmi8658:
+    component_hash: 0f849356dfdcd3c868ad37a74a2cbb00892c69b3b1b18854172715f6eb980e5b
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.3.2'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.0.1
 direct_dependencies:
 - espressif/esp_lcd_gc9a01
 - espressif/esp_lcd_touch_cst816s
 - espressif/esp_lvgl_port
 - h2zero/esp-nimble-cpp
 - lvgl/lvgl
-manifest_hash: 44fd94564350e5470a02aa04c68988135aa6f32e9d2176d5eb451624b7c5c8cf
+- waveshare/qmi8658
+manifest_hash: cf474ccc2db3dfb89c57511820e7c90820a49564675fa05e6f8e7f4b40cb7ff4
 target: esp32s3
 version: 2.0.0

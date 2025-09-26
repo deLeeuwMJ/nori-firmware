@@ -18,20 +18,20 @@ namespace core
         return spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO);
     }
 
-    esp_err_t init_i2c_bus()
+    esp_err_t init_i2c_bus(i2c_master_bus_handle_t *bus_handle_out)
     {
         ESP_LOGI(LOG_TAG_HAL, "Initialize I2C bus");
 
-        i2c_config_t i2cConfig = {
-            .mode = I2C_MODE_MASTER,
+        i2c_master_bus_config_t i2c_bus_config = {
+            .i2c_port = I2C_NUM_0,
             .sda_io_num = GPIO_I2C_SDA,
             .scl_io_num = GPIO_I2C_SCL,
-            .sda_pullup_en = GPIO_PULLUP_DISABLE,
-            .scl_pullup_en = GPIO_PULLUP_DISABLE,
+            .clk_source = I2C_CLK_SRC_DEFAULT,
+            .glitch_ignore_cnt = 7,
         };
-        i2cConfig.master.clk_speed = I2C_CLK_SPEED;
 
-        ESP_ERROR_CHECK(i2c_param_config(I2C_NUM_0, &i2cConfig));
-        return i2c_driver_install(I2C_NUM_0, i2cConfig.mode, 0, 0, 0);
+        i2c_bus_config.flags.enable_internal_pullup = false;
+        
+        return i2c_new_master_bus(&i2c_bus_config, bus_handle_out);
     }
 }

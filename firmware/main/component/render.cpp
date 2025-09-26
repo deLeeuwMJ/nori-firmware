@@ -11,25 +11,38 @@
 #include "esp_lvgl_port.h"
 #include "render.hpp"
 
+#define EYE_WIDTH           40
+#define EYE_HEIGHT          60
+#define EYE_BORDER_WIDTH    8
+#define SCLERA_RADIUS       45
+
+static void create_eye(lv_obj_t *parent, lv_coord_t x_pos, lv_coord_t y_pos) {
+    lv_obj_t *sclera = lv_obj_create(parent);
+    lv_obj_set_size(sclera, EYE_WIDTH, EYE_HEIGHT);
+    lv_obj_set_pos(sclera, x_pos, y_pos);
+    lv_obj_set_style_radius(sclera, SCLERA_RADIUS, 0);
+    lv_obj_set_style_bg_color(sclera, lv_color_hex(0x003a57), 0);
+    lv_obj_set_style_border_width(sclera, EYE_BORDER_WIDTH, 0);
+    lv_obj_set_style_border_color(sclera, lv_color_white(), 0);
+}
+
+
 void Render::loadUserInterface()
 {
     lv_obj_set_style_bg_color(lv_screen_active(), lv_color_hex(0x003a57), LV_PART_MAIN);
 
-    textLabel = lv_label_create(lv_screen_active());
-    lv_label_set_text_fmt(textLabel, "Nori");
-    lv_obj_set_style_text_font(textLabel, &lv_font_montserrat_48, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lv_screen_active(), lv_color_hex(0xffffff), LV_PART_MAIN);
-    lv_obj_align(textLabel, LV_ALIGN_CENTER, 0, 0);
+    create_eye(lv_screen_active(), 70, 90);
+    create_eye(lv_screen_active(), 130, 90);
 }
 
 void Render::updateValue(Events::CarEventData data)
 {
-    if (textLabel)
-    {
-        lvgl_port_lock(0);
-        lv_label_set_text_fmt(textLabel, "%d km/h", std::stoi(data.value.c_str(), nullptr, 16));
-        lvgl_port_unlock();
-    }
+    // if (textLabel)
+    // {
+    //     lvgl_port_lock(0);
+    //     lv_label_set_text_fmt(textLabel, "%d km/h", std::stoi(data.value.c_str(), nullptr, 16));
+    //     lvgl_port_unlock();
+    // }
 }
 
 void Render::setup(TouchDisplay& touchDisplay)

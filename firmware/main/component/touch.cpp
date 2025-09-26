@@ -6,7 +6,6 @@
 #include "touch.hpp"
 #include "../component/display.hpp"
 
-// TODO MOVE TO USING MUTEX
 static esp_lcd_touch_handle_t tp = NULL;
 static bool ISR_TOUCH_TRIGGERED = false;
 
