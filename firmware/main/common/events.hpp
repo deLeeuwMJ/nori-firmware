@@ -28,4 +28,5 @@ namespace Events
 
     CarEventResponse parseRawData(std::string value);
     CarEventData retrieveData(CarEventResponse response);
+    std::string carEventToString(CarEvent event);
 }

@@ -2,7 +2,9 @@
 
 namespace Events
 {
-    // Only accepting 1 byte response right now
+    /*
+        Still need to fix event parsing and its only accepting one byte values
+    */
     CarEventResponse parseRawData(std::string value) 
     {
         CarEventResponse response = {
@@ -27,5 +29,16 @@ namespace Events
         };
         
         return data;
+    };
+
+    std::string carEventToString(CarEvent event)
+    {
+        switch (event) {
+            case VEHICLE_SPEED:
+                return "VEHICLE_SPEED";
+            case UNKNOWN:
+            default:
+                return "UNKNOWN";
+        };
     };
 }

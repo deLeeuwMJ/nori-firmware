@@ -10,16 +10,14 @@
 #include "core/bluetooth.hpp"
 #include "core/board.hpp"
 
-TouchDisplay* touchDisplay = nullptr;
 Render* render = nullptr;
 
-// static void peripheralCallback(Events::CarEventData data)
-// {
-//     if (render)
-//         render->updateValue(data);
-// }
+static void carEventCallback(Events::CarEventData data)
+{
+    ESP_LOGI("ELM327", "Event: %s (Value: %d)\n", carEventToString(data.event).c_str(), std::stoi(data.value.c_str(), nullptr, 16));
+}
 
-static void motionCallback(MotionEventData data)
+static void motionEventCallback(MotionEventData data)
 {
     ESP_LOGI("QMI", "Accel [g]: X=%.2f, Y=%.2f, Z=%.2f | Gyro [dps]: X=%.2f, Y=%.2f, Z=%.2f", 
         data.accelerometer.x, data.accelerometer.y, data.accelerometer.z,
@@ -33,15 +31,15 @@ extern "C" void app_main(void) {
     ESP_ERROR_CHECK(core::init_spi_bus());
     ESP_ERROR_CHECK(core::init_i2c_bus(&i2c_bus_handle));
 
-    Motion* motion = new Motion();
-    motion->setup(i2c_bus_handle, motionCallback);
+    Motion motion = Motion();
+    motion.setup(i2c_bus_handle, motionEventCallback);
     
-    touchDisplay = new TouchDisplay();
-    touchDisplay->init();
+    TouchDisplay touchDisplay = TouchDisplay();
+    touchDisplay.init();
 
     render = new Render();
-    render->setup(*touchDisplay);
+    render->setup(touchDisplay);
 
-    // core::Bluetooth bluetooth = core::Bluetooth();
-    // bluetooth.setup(&peripheralCallback);
+    core::Bluetooth bluetooth = core::Bluetooth();
+    bluetooth.setup(carEventCallback);
 }
