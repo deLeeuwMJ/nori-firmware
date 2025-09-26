@@ -9,15 +9,15 @@ namespace core
 
     void Bluetooth::notifyCallback(NimBLERemoteCharacteristic* pRemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify)
     {
-        // Temporary skipping other messages
+        // Temporary skipping other messages, also indirectly only accepting succesfull messages
         std::string rawValue = std::string((char*)pData, length);
-        if (strcmp(rawValue.c_str(),"010C\r") || strcmp(rawValue.c_str(),"\r>"))
+        if (!rawValue.starts_with(ID_SUCCES))
             return;
 
-        Events::CarEventResponse response = Events::parseRawData(pData);
+        Events::CarEventResponse response = Events::parseRawData(rawValue);
+        Events::CarEventData data = Events::retrieveData(response);
 
-        if (Events::isSuccesfull(response))
-            dataCallback(Events::retrieveData(response));
+        dataCallback(data);
     }
 
     void Bluetooth::onResult(const NimBLEAdvertisedDevice* advertisedDevice) {
@@ -42,9 +42,9 @@ namespace core
 
     }
 
-    void Bluetooth::setup(std::function<void(Events::CarEventData)> dataCallback)
+    void Bluetooth::setup(std::function<void(Events::CarEventData)> callback)
     {
-        dataCallback = dataCallback;
+        dataCallback = callback;
 
         NimBLEDevice::init(BLE_CENTRAL_DEVICE_NAME);
         NimBLEScan* pScan = NimBLEDevice::getScan();
@@ -81,34 +81,15 @@ namespace core
 
     void Bluetooth::connectToDevice()
     {
-        /** Check if we have a client we should reuse first **/
-        if (NimBLEDevice::getCreatedClientCount()) {
-            /**
-             *  Special case when we already know this device, we send false as the
-             *  second argument in connect() to prevent refreshing the service database.
-             *  This saves considerable time and power.
-             */
+        if (NimBLEDevice::getCreatedClientCount() > 0) {
             client = NimBLEDevice::getClientByPeerAddress(advDevice->getAddress());
-
-            if (client) {
-                if (!client->connect(advDevice, false))
-                {
-                    ESP_LOGI(LOG_TAG_BLE, "Reconnect failed");
-                    bleState = BleState::DISCONNECTED;
-                    return;
-                }
-                   
-                ESP_LOGI(LOG_TAG_BLE, "Reconnected");
-            } else {
-                /**
-                 *  We don't already have a client that knows this device,
-                 *  check for a client that is disconnected that we can use.
-                 */
-                client = NimBLEDevice::getDisconnectedClient();
-            }
+            client->disconnect();
+            NimBLEDevice::deleteClient(client);
+            ESP_LOGI(LOG_TAG_BLE, "Client was already created");
+            bleState = BleState::DISCONNECTED;
+            return;
         }
 
-        /** No client to reuse? Create a new one. */
         if (!client) {
             if (NimBLEDevice::getCreatedClientCount() >= MYNEWT_VAL(BLE_MAX_CONNECTIONS)) {
                 ESP_LOGI(LOG_TAG_BLE, "Max clients reached - no more connections available");

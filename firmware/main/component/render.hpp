@@ -30,21 +30,11 @@
 class Render
 {
     public:
-        ~Render();
-
         void setup(TouchDisplay& touchDisplay);
-        void loadUserInterface();
         void updateValue(Events::CarEventData data);
     private:
-        // LVGL library is not thread-safe, this will call LVGL APIs from different tasks, so use a mutex to protect it
-        static SemaphoreHandle_t lvgl_api_mutex;
-
-        lv_style_t *fa_icon_style = nullptr;
+        lv_disp_t *disp_handle = nullptr;
         lv_obj_t *textLabel = nullptr;
 
-        static void lvglMainLoopTask(void *arg);
-        static void lvglTickTimerCallback(void *arg);
-
-        static void lvglFlushScreen(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
-        static bool lvglNotifyFlushReadyCallback(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx);
+        void loadUserInterface();
     };

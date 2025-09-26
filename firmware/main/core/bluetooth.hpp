@@ -27,7 +27,7 @@ namespace core
     class Bluetooth : public NimBLEScanCallbacks
     {
         public:
-            void setup(std::function<void(Events::CarEventData)> dataCallback);
+            void setup(std::function<void(Events::CarEventData)> callback);
         private:
             NimBLEClient *client = nullptr;
             NimBLERemoteService *service = nullptr;

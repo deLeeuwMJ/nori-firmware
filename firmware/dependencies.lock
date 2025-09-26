@@ -47,6 +47,20 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 1.1.0
+  espressif/esp_lvgl_port:
+    component_hash: bfb2778c063b05a6c47c1a8de6d166ee4d911bc86fe0b3ff9e6bab06d2812033
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.1'
+    - name: lvgl/lvgl
+      registry_url: https://components.espressif.com
+      require: public
+      version: '>=8,<10'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 2.6.2
   h2zero/esp-nimble-cpp:
     component_hash: 2abbd3e11011da5e24e24433738d6fc705ac92b1fcac7784ca5d533898c1ef7b
     dependencies:
@@ -81,8 +95,9 @@ dependencies:
 direct_dependencies:
 - espressif/esp_lcd_gc9a01
 - espressif/esp_lcd_touch_cst816s
+- espressif/esp_lvgl_port
 - h2zero/esp-nimble-cpp
 - lvgl/lvgl
-manifest_hash: 0cffd616092c7cbcf059b7d7de5f25c44b161902d24660850eb7170aea5718c1
+manifest_hash: 44fd94564350e5470a02aa04c68988135aa6f32e9d2176d5eb451624b7c5c8cf
 target: esp32s3
 version: 2.0.0

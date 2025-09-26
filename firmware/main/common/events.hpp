@@ -1,9 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
-#define ID_SUCCES           0x41
-#define ID_VEHICLE_SPEED    0x0D
+#define ID_SUCCES           "41"
+#define ID_VEHICLE_SPEED    "0D"
 
 namespace Events
 {
@@ -14,18 +15,17 @@ namespace Events
 
     struct CarEventResponse
     {
-        uint8_t status;
-        uint8_t command;
-        uint8_t value; // Hex Value
+        std::string status;
+        std::string command;
+        std::string value;
     };
 
     struct CarEventData
     {
         CarEvent event;
-        int8_t value; // Decimal Value
+        std::string value;
     };
 
-    CarEventResponse parseRawData(uint8_t* data);
+    CarEventResponse parseRawData(std::string value);
     CarEventData retrieveData(CarEventResponse response);
-    bool isSuccesfull(CarEventResponse response);
 }

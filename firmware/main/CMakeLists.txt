@@ -1,6 +1,5 @@
 file(GLOB_RECURSE SRC_FILES 
     "main.cpp" 
-    "events.cpp"
     "common/*" 
     "component/*" 
     "core/*"

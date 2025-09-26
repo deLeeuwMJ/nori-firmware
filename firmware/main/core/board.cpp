@@ -8,9 +8,11 @@ namespace core
 
         spi_bus_config_t buscfg = {
             .mosi_io_num = GPIO_SPI_MOSI,
-            .miso_io_num = GPIO_SPI_MISO,
+            .miso_io_num = -1,
             .sclk_io_num = GPIO_SPI_SCLK,
-            // .max_transfer_sz = LCD_H_RES * 80 * sizeof(uint16_t),
+            .quadwp_io_num = -1,
+            .quadhd_io_num = -1,
+            .max_transfer_sz = LCD_H_RES * 80 * sizeof(uint16_t),
         };
 
         return spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO);

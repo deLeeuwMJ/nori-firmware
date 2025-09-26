@@ -5,3 +5,4 @@ dependencies:
   h2zero/esp-nimble-cpp:
     git: "https://github.com/h2zero/esp-nimble-cpp"
     version: "815c555"
+  espressif/esp_lvgl_port: ^2.6.2

@@ -10,9 +10,8 @@
 
 #define LOG_TAG_HAL "HAL"
 
-#define GPIO_SPI_SCLK           10
-#define GPIO_SPI_MOSI           11
-#define GPIO_SPI_MISO           12
+#define GPIO_SPI_SCLK           GPIO_NUM_10
+#define GPIO_SPI_MOSI           GPIO_NUM_11
 
 #define GPIO_I2C_SDA            6
 #define GPIO_I2C_SCL            7
