@@ -39,6 +39,6 @@ void Motion::processMotionEventTask(void *pvParameter)
             },
         });
 
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }

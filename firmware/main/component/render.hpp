@@ -25,7 +25,8 @@ class Render
     private:
         lv_disp_t *disp_handle = nullptr;
         lv_obj_t *speedLabel = nullptr;
-        lv_obj_t *motionLabel = nullptr;
+
+        float lastMotionValue = NULL;
 
         void loadUserInterface();
     };

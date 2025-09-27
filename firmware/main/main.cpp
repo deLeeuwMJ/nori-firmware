@@ -46,6 +46,6 @@ extern "C" void app_main(void) {
     render = new Render();
     render->setup(touchDisplay);
 
-    core::Bluetooth bluetooth = core::Bluetooth();
-    bluetooth.setup(carEventCallback);
+    // core::Bluetooth bluetooth = core::Bluetooth();
+    // bluetooth.setup(carEventCallback);
 }
